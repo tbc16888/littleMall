@@ -1,0 +1,14 @@
+{
+    "name": "tbc/utils",
+    "description": "Personal tools",
+    "require": {
+        "php": ">=7.0.0"
+    },
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "tbc\\utils\\": "src/"
+        }
+    }
+}
