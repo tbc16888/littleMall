@@ -6,7 +6,7 @@ namespace app\admin\controller\user;
 use app\Request;
 use core\base\BaseController;
 use core\service\user\UserAddressService;
-use app\v2\validate\UserAddressValidate;
+use app\v1\validate\UserAddressValidate;
 
 class AddressController extends BaseController
 {
@@ -21,10 +21,12 @@ class AddressController extends BaseController
     public function index(Request $request)
     {
         $condition = [];
-        if (($userId = $request->get('user_id', '')))
+        if (($userId = $request->get('user_id', ''))) {
             $condition['user_id'] = $userId;
-        $total = UserAddressService::getInstance()->dbQuery($condition)->count();
-        $lists = UserAddressService::getInstance()->getList($condition,
+        }
+        $service = UserAddressService::getInstance();
+        $total = $service->dbQuery($condition)->count();
+        $lists = $service->getList($condition,
             $this->page(), $this->size());
         foreach ($lists as &$item) {
             $item['full_address'] = UserAddressService::getFullAddressField($item,

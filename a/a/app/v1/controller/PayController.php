@@ -218,14 +218,15 @@ class PayController extends BaseController
     public function wxCallback(Request $request)
     {
         $response = OrderPaymentService::getInstance()->getEasyWeChatWxPaymentApp()->handlePaidNotify(function ($data, $fail) {
-            $orderInfo = Order::getInstance()->getInfo($data['out_trade_no']);
+            $orderInfo = OrderService::getInstance()->db()->where('order_sn', $data['out_trade_no'])
+                ->find();
             if (null === $orderInfo) $fail('订单不存在');
             $payInfo = [];
             $payInfo['pay_type'] = OrderPaymentService::WECHAT_MINI_PROGRAM;
             $payInfo['out_trade_no'] = $data['transaction_id'];
             try {
-                Order::getInstance()->setUserId($orderInfo['user_id'])
-                    ->setOrderSn($orderInfo['order_sn'])->payment($payInfo);
+                OrderService::getInstance()->setUserId($orderInfo['user_id'])
+                    ->payment($orderInfo['order_sn'], $payInfo);
             } catch (Exception $e) {
                 $fail($e->getMessage());
             }

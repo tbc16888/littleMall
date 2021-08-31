@@ -9,6 +9,7 @@ use core\base\BaseController;
 use core\service\coupon\CouponService;
 use core\service\coupon\CouponGoodsService;
 use core\service\coupon\UserCouponService;
+use core\service\user\UserService;
 
 class  CouponController extends BaseController
 {
@@ -132,18 +133,15 @@ class  CouponController extends BaseController
     public function user(Request $request)
     {
         $condition = [];
-        $condition['coupon_id'] = $request->get('coupon_id', '');
-        $field = '*, count(user_coupon_id) as received_count';
-        $total = UserCoupon::getInstance()->getDbQueryInstance($condition)
-            ->field($field)->group('user_id')->order('received_count desc')->fetchSql(true)->select();
-
-        $field = 'u.nick_name, u.account, u.mobile, u.user_id, t.received_count';
-        $count = User::getInstance()->getTotal();
-        $lists = User::getInstance()->getDbQueryInstance()->field($field)
-            ->join("($total) as t", 't.user_id = u.user_id', 'LEFT')
-            ->page(intval($request->get('page', 1), intval($request->get('size', 10))))
-            ->select();
-        foreach ($lists as &$item) if (!$item['received_count']) $item['received_count'] = 0;
+        $userService = UserService::getInstance();
+        $field = 'u.nick_name, u.account, u.mobile, u.user_id';
+        $count = $userService->dbQuery($condition, 'u')->count();
+        $lists = $userService->dbQuery($condition, 'u')->field($field)
+            ->page($this->page(), $this->size())
+            ->select()->toArray();
+        foreach ($lists as &$item) {
+            $item['received_count'] = $item['received_count'] ?? 0;
+        }
         return finish(0, '获取成功', ['total' => $count, 'list' => $lists]);
     }
 
@@ -155,9 +153,14 @@ class  CouponController extends BaseController
      */
     public function send(Request $request)
     {
-        if (!($couponId = $request->post('coupon_id', ''))) return finish(1, '参数错误');
-        if (!($userId = $request->post('user_id', ''))) return finish(1, '参数错误');
-        Coupon::getInstance()->sendToUser($couponId, $userId);
+        if (!($couponId = $request->post('coupon_id', ''))) {
+            return finish(1, '参数错误');
+        }
+
+        if (!($userId = $request->post('user_id', ''))) {
+            return finish(1, '参数错误');
+        }
+        CouponService::getInstance()->sendToUser($couponId, $userId);
         return finish(0, '发放成功');
     }
 
@@ -169,21 +172,23 @@ class  CouponController extends BaseController
      */
     public function received(Request $request)
     {
-        $instance = UserCouponService::getInstance()->db();
-        if (($userId = $request->get('user_id', ''))) {
-            $instance->where('uc.user_id', $userId);
+        $condition = [];
+        if (($couponId = $request->get('coupon_id', ''))) {
+            $condition['uc.coupon_id'] = $couponId;
         }
-
-//        $condition = [];
-//        $condition['uc.coupon_id'] = $request->get('coupon_id', '');
-//        if (($status = intval($request->get('status', 0)))) $condition['uc.status'] = $status;
+        if (($status = intval($request->get('status', 0)))) {
+            $condition['uc.status'] = $status;
+        }
+        if (($userId = $request->get('user_id', ''))) {
+            $condition['uc.user_id'] = $userId;
+        }
+        $service = UserCouponService::getInstance();
+        $total = $service->dbQuery($condition, 'uc')->count();
         $field = 'uc.*, c.coupon_name, u.account, u.nick_name';
-        $lists = $instance->alias('uc')->field($field)
+        $lists = $service->dbQuery($condition, 'uc')->field($field)
             ->join('coupon c', 'uc.coupon_id = c.coupon_id')
             ->join('user u', 'uc.user_id = u.user_id')
-//            ->leftJoin('order o', 'uc.order_id = o.order_id')
             ->page($this->page(), $this->size())->select()->toArray();
-        $total = $instance->count();
         return finish(0, '获取成功', ['total' => $total, 'list' => $lists]);
     }
 }

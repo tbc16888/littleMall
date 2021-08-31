@@ -18,7 +18,7 @@ class CouponService extends BaseService
     const SCOPE_PARTIALLY_AVAILABLE = 2;
     const SCOPE_PARTIALLY_NOT_AVAILABLE = 3;
 
-    public static $distribution = [
+    public static array $distribution = [
         1 => '默认领取',
         2 => '注册赠送',
         3 => '分享赠送'

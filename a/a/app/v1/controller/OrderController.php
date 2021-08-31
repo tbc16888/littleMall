@@ -8,7 +8,6 @@ use app\v1\validate\OrderRefundValidate;
 use core\base\BaseController;
 use core\constant\order\OrderStatus;
 use core\service\order\OrderFrontModuleService;
-use core\service\order\OrderModuleService;
 use core\service\order\OrderPaymentService;
 use core\service\order\OrderRefundService;
 use core\service\order\OrderService;
@@ -75,21 +74,6 @@ class OrderController extends BaseController
             'list' => $order]);
     }
 
-    /**
-     * 统计
-     * @RequestMapping(path="/statistics", methods="get")
-     * @param Request $request
-     * @return false|string|void
-     */
-    public function statistics(Request $request)
-    {
-        $waitPay = OrderStatistics::getInstance()->getWaitPayTotal();
-        $waitSend = OrderStatistics::getInstance()->getWaitSend();
-        $waitComment = OrderStatistics::getInstance()->getWaitComment();
-        $waitConfirmReceipt = OrderStatistics::getInstance()->getWaitConfirmReceipt();
-        return finish(0, '获取成', ['wait_pay' => $waitPay, 'wait_send' => $waitSend,
-            'wait_confirm_receipt' => $waitConfirmReceipt, 'wait_comment' => $waitComment]);
-    }
 
     /**
      * 订单详情
@@ -159,8 +143,12 @@ class OrderController extends BaseController
     {
         if (!($orderSn = $request->post('order_sn', ''))) {
             return finish(1, '参数错误');
-        }return finish(0, '操作成功');
-        OrderService::getInstance()->softDelete($orderSn);
+        }
+        $service = OrderService::getInstance();
+        $orderInfo = $service->dbQuery()->where('order_sn', $orderSn)->find();
+        if ($orderInfo['status'] !== OrderStatus::CANCEL)
+            return finish(1, '订单状态错误');
+        $service->softDelete($orderSn);
         return finish(0, '操作成功');
     }
 

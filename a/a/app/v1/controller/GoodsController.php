@@ -3,7 +3,6 @@ declare (strict_types=1);
 
 namespace app\v1\controller;
 
-
 use think\facade\Db;
 use app\Request;
 use core\base\BaseController;
@@ -12,10 +11,6 @@ use core\service\goods\GoodsBrowseService;
 use core\service\goods\GoodsImageService;
 use core\service\goods\GoodsCollectService;
 use core\service\goods\GoodsFrontModuleService;
-use core\business\goods\Goods;
-use core\business\goods\GoodsAttr;
-use core\business\goods\GoodsCat;
-use core\business\goods\GoodsActivity;
 
 class GoodsController extends BaseController
 {

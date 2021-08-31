@@ -6,6 +6,7 @@ namespace core\service\order;
 use core\base\BaseService;
 use core\constant\order\OrderStatus;
 use core\exception\BusinessException;
+use http\Exception\UnexpectedValueException;
 use think\exception\ValidateException;
 use core\service\user\UserBalanceService;
 
@@ -20,7 +21,7 @@ class OrderRefundService extends BaseService
     protected string $tableUniqueKey = 'refund_id';
 
     // 申请退款
-    public function apply($orderSn, $orderGoodsId, array $data): self
+    public function apply($orderSn, array $data, $orderGoodsId = ''): self
     {
         $condition = [];
         $condition['order_sn'] = $orderSn;
@@ -181,5 +182,37 @@ class OrderRefundService extends BaseService
     {
 
     }
+
+
+    // 整体申请退款
+    public function applyWholeOrder(string $orderSn)
+    {
+        $condition = [];
+        $condition['order_sn'] = $orderSn;
+        $condition['audit_status'] = self::AUDIT_WAIT;
+        $info = $this->dbQuery($condition)->order('id', 'desc')->find();
+        if (null !== $info) throw new BusinessException('申请已提交', 1);
+
+        $condition = [];
+        $condition['order_sn'] = $orderSn;
+        $order = OrderService::getInstance()->dbQuery($condition)->find();
+        if (null === $order) throw new BusinessException('数据错误');
+        if (!isset($data['amount'])) $data['amount'] = $order['order_amount'];
+
+        static::transaction(function () use ($order, $data) {
+
+            $rData = [];
+            $rData['refund_sn'] = static::buildSnowflakeId();
+            $rData['audit_status'] = self::AUDIT_WAIT;
+            $rData['order_sn'] = $order['order_sn'];
+            $rData['refund_amount'] = $data['amount'];
+            $rData['order_status'] = $order['order_status'];
+            $this->setFormData($rData)->addOrUpdate();
+            OrderService::getInstance()->changeOrderStatus($order['order_sn'],
+                OrderStatus::REFUNDING);
+        });
+        return $this;
+    }
+
 
 }
