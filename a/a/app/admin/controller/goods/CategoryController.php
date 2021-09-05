@@ -49,7 +49,9 @@ class CategoryController extends BaseController
     {
         $data = $request->getPostParams($this->field);
         $this->validate($data, GoodsCategoryValidate::class);
-        GoodsCategoryService::getInstance()->setFormData($data)->addOrUpdate();
+        $service = GoodsCategoryService::getInstance();
+        $catId = $service->setFormData($data)->addOrUpdate()->getTableUniqueId();
+        $service->updateChildrenTotal($data['parent_id']);
         return finish(0, '添加成功');
     }
 
@@ -102,5 +104,19 @@ class CategoryController extends BaseController
         GoodsCategoryService::getInstance()->setModel($catId, $modelId,
             $isSyncChildren);
         return finish(0, '设置成功');
+    }
+
+    public function async(Request $request)
+    {
+        $condition = [];
+        $condition['parent_id'] = $request->get('pid', '');
+        $service = new GoodsCategoryService();
+        $field = 'cat_id as value, cat_name as label, children as leaf, model_id';
+        $lists = $service->dbQuery($condition)->field($field)
+            ->page($this->page(), $this->size())
+            ->order('sort_weight', 'desc')->order('id asc')
+            ->select()->toArray();
+        return finish(0, '获取成功', ['list' => $lists,
+            'total' => count($lists)]);
     }
 }

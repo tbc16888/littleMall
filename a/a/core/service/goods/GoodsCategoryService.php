@@ -5,6 +5,7 @@ namespace core\service\goods;
 
 use core\base\BaseService;
 use think\exception\ValidateException;
+use core\exception\BusinessException;
 
 class GoodsCategoryService extends BaseService
 {
@@ -84,5 +85,13 @@ class GoodsCategoryService extends BaseService
             throw new BusinessException('操作失败');
         }
         return $this;
+    }
+
+    public function updateChildrenTotal($catId)
+    {
+        $total = $this->dbQuery()->where('parent_id', $catId)->count();
+        $this->dbQuery()->where('cat_id', $catId)->update([
+            'children' => $total
+        ]);
     }
 }

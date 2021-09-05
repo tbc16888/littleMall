@@ -7,6 +7,7 @@ use EasyWeChat\Factory;
 use core\base\BaseService;
 use core\exception\BusinessException;
 use core\constant\order\OrderStatus;
+use core\service\user\UserBalanceService;
 
 class OrderPaymentService extends BaseService
 {
@@ -24,6 +25,18 @@ class OrderPaymentService extends BaseService
         self::BALANCE => '账户余额'
     ];
 
+    public function getEasyWeChatWxPaymentApp(): \EasyWeChat\Payment\Application
+    {
+        return Factory::payment([
+            'app_id' => env('wx.mini_program_app_id'),
+            'mch_id' => env('wx.pay_mch_id'),
+            'key' => env('wx.pay_key'),
+            'cert_path' => env('wx.pay_cert_path'),
+            'key_path' => env('wx.pay_key_path'),
+        ]);
+    }
+
+    // 校验合法并返回订单信息
     public function checkAndGetInfo($orderSn)
     {
         $condition = [];
@@ -40,14 +53,25 @@ class OrderPaymentService extends BaseService
     }
 
 
-    public function getEasyWeChatWxPaymentApp(): \EasyWeChat\Payment\Application
+    public function refund($order, $refundAmount, string $desc = '')
     {
-        return Factory::payment([
-            'app_id' => env('wx.mini_program_app_id'),
-            'mch_id' => env('wx.pay_mch_id'),
-            'key' => env('wx.pay_key'),
-            'cert_path' => env('wx.pay_cert_path'),
-            'key_path' => env('wx.pay_key_path'),
-        ]);
+        // 账户余额
+        if ($order['pay_type'] === self::BALANCE) {
+            UserBalanceService::getInstance()->change($order['user_id'],
+                floatval($order['order_amount']),
+                UserBalanceService::CONSUME_REFUND,
+                '订单退款' . $order['order_sn']);
+        }
+
+        if ($order['pay_type'] === self::WECHAT_MINI_PROGRAM) {
+            $app = self::getEasyWeChatWxPaymentApp();
+            // 参数分别为：商户订单号、商户退款单号、订单金额、退款金额、其他参数
+            $app->refund->byOutTradeNumber($order['order_sn'],
+                'RFN' . date('YmdHis'),
+                intval($order['order_amount'] * 100),
+                intval($refundAmount * 100), [
+                    'refund_desc' => $desc
+                ]);
+        }
     }
 }

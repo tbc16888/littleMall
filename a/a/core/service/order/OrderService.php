@@ -4,13 +4,11 @@ declare(strict_types=1);
 namespace core\service\order;
 
 use core\base\BaseService;
-use core\business\order\OrderOperation;
 use core\exception\BusinessException;
-use core\service\coupon\UserCouponService;
-use core\service\user\UserBalanceService;
-use think\exception\ValidateException;
 use core\constant\order\OrderStatus;
 use core\constant\order\OrderPayment;
+use core\service\order\OrderOperationService;
+use core\service\coupon\UserCouponService;
 use core\service\shipping\ShippingService;
 
 class OrderService extends BaseService
@@ -128,8 +126,16 @@ class OrderService extends BaseService
         return $this->changeOrderStatus($orderSn, OrderStatus::COMPLETE);
     }
 
-    // 退款
-    public function refund($orderSn, int $refundMethod, float $refundAmount, string $reason = ''): self
+
+    /**
+     * 退款
+     * @param string $orderSn
+     * @param int $refundMethod
+     * @param float $refundAmount
+     * @param string $reason
+     * @return OrderService
+     */
+    public function refund(string $orderSn, int $refundMethod, float $refundAmount, string $reason = ''): self
     {
         $order = $this->db()->where('order_sn', $orderSn)->find();
         if (null === $order) throw new BusinessException('订单不存在或已删除');
@@ -146,15 +152,9 @@ class OrderService extends BaseService
 
         // 原路退款
         if ($refundMethod == 1) {
-            // 账户余额
-            if ($order['pay_type'] === OrderPaymentService::BALANCE) {
-                UserBalanceService::getInstance()->change($order['user_id'],
-                    floatval($order['order_amount']),
-                    UserBalanceService::CONSUME_REFUND,
-                    '订单退款' . $order['order_sn']);
-            }
+            OrderPaymentService::getInstance()->refund($order,
+                $order['order_amount']);
         }
-
         OrderGoodsService::getInstance()->refund($orderSn);
         return $this;
     }
@@ -177,7 +177,7 @@ class OrderService extends BaseService
         if (null === $order) throw new BusinessException('订单不存在');
 
         if ($order['user_id'] !== $this->userId && !$this->adminId) {
-            throw new ValidateException('用户异常');
+            throw new BusinessException('用户异常');
         }
 
         $instance = $this->db()->where('order_sn', $orderSn);
@@ -237,7 +237,7 @@ class OrderService extends BaseService
         }
 
         if (false === $isValidateSuccess) {
-            throw new ValidateException('订单状态错误');
+            throw new BusinessException('订单状态错误');
         }
 
         // 执行操作

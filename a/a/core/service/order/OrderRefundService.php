@@ -6,8 +6,6 @@ namespace core\service\order;
 use core\base\BaseService;
 use core\constant\order\OrderStatus;
 use core\exception\BusinessException;
-use http\Exception\UnexpectedValueException;
-use think\exception\ValidateException;
 use core\service\user\UserBalanceService;
 
 class OrderRefundService extends BaseService
@@ -129,13 +127,15 @@ class OrderRefundService extends BaseService
                         if ($item['refund_status'] !== 2) $allRefund = false;
                     }
 
+                    OrderPaymentService::getInstance()->refund($order,
+                        $refund['refund_amount']);
 
-                    if ($order['pay_type'] === OrderPaymentService::BALANCE) {
-                        UserBalanceService::getInstance()->change($order['user_id'],
-                            floatval($refund['refund_amount']),
-                            UserBalanceService::CONSUME_REFUND,
-                            '商品退款' . $order['order_sn']);
-                    }
+//                    if ($order['pay_type'] === OrderPaymentService::BALANCE) {
+//                        UserBalanceService::getInstance()->change($order['user_id'],
+//                            floatval($refund['refund_amount']),
+//                            UserBalanceService::CONSUME_REFUND,
+//                            '商品退款' . $order['order_sn']);
+//                    }
 
                     if ($allRefund) {
                         OrderService::getInstance()
