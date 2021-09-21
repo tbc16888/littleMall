@@ -5,7 +5,7 @@ namespace app\v1\controller;
 
 use app\Request;
 use core\base\BaseController;
-use core\business\system\Config;
+use core\service\system\ConfigService;
 
 class SystemController extends BaseController
 {
@@ -20,7 +20,7 @@ class SystemController extends BaseController
         if ((!$code = $request->get('code', ''))) {
             return finish(1, '参数错误');
         }
-        $config = Config::getInstance()->getValue($code, '');
+        $config = ConfigService::getInstance()->getValue($code, '');
         return finish(0, '获取成功', $config);
     }
 }

@@ -15,6 +15,11 @@ class FileValidate extends Validate
     protected $message = [
         'file_title.require' => '文件名为空',
         'file_title.max' => '文件名最多不能超过400个字符',
-        'file_url.require' => '文件名为空',
+        'file_url.require' => '地址为空',
+    ];
+
+    protected $scene = [
+        'file' => ['file_title', 'file_url'],
+        'directory' => ['file_title'],
     ];
 }

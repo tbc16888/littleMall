@@ -8,7 +8,6 @@ use think\facade\Db;
 use core\base\BaseController;
 use core\service\file\FileService;
 use app\admin\validate\file\FileValidate;
-use think\File;
 
 class FileController extends BaseController
 {
@@ -33,6 +32,7 @@ class FileController extends BaseController
         }
         $total = FileService::getInstance()->dbQuery($condition)->count();
         $lists = FileService::getInstance()->dbQuery($condition)
+            ->order('is_directory desc, create_time desc')
             ->page($this->page(), $this->size())->select()->toArray();
         foreach ($lists as &$file) {
             $file['file_cover'] = FileService::getCover($file);
@@ -49,7 +49,9 @@ class FileController extends BaseController
     public function add(Request $request)
     {
         $data = $request->getPostParams($this->field);
-        $this->validate($data, FileValidate::class);
+        $rule = FileValidate::class;
+        if ($data['is_directory'] ?? 0) $rule = $rule . '.directory';
+        $this->validate($data, $rule);
         FileService::getInstance()->setFormData($data)->addOrUpdate();
         return finish(0, '添加成功');
     }
@@ -66,7 +68,9 @@ class FileController extends BaseController
             return finish(1, '参数错误');
         }
         $data = $request->getPostParams($this->field);
-        $this->validate($data, FileValidate::class);
+        $rule = FileValidate::class;
+        if ($data['is_directory'] ?? 0) $rule = $rule . '.directory';
+        $this->validate($data, $rule);
         FileService::getInstance()->setFormData($data)->addOrUpdate();
         return finish(0, '编辑成功');
     }
@@ -82,9 +86,9 @@ class FileController extends BaseController
         if (!($fileId = $request->param('file_id', ''))) {
             return finish(1, '参数错误');
         }
-        Manager::transaction(function () use ($fileId) {
-            Manager::getInstance()->delete($fileId);
-            Manager::getInstance()->moveToDirectory($fileId, '');
+        FileService::transaction(function () use ($fileId) {
+            FileService::getInstance()->softDelete($fileId);
+            FileService::getInstance()->moveToDirectory($fileId, '');
         });
         return finish(0, '删除成功');
     }
